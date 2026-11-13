@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Polygon Tug-of-War: Properties & Classification | IFP Geometry</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@500;600;700;800&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-board: #0b1120;
+      --bg-panel: #0f172a;
+      --bg-card: #1e293b;
+      --accent-cyan: #22d3ee;
+      --accent-emerald: #10b981;
+      --accent-amber: #fbbf24;
+      --accent-rose: #f43f5e;
+      --accent-violet: #a855f7;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-board);
+      color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    h1, h2, h3, .font-display {
+      font-family: 'Fredoka', sans-serif;
+    }
+
+    .font-mono-num {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* IFP Touch-Friendly Controls (Waist-to-chest ergonomic sizing) */
+    .ifp-btn {
+      min-height: 46px;
+      min-width: 46px;
+      border-radius: 14px;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s ease, box-shadow 0.15s ease;
+      cursor: pointer;
+    }
+
+    .ifp-btn:active {
+      transform: scale(0.94);
+    }
+
+    /* Subtle Blueprint Grid for Mutant Shape Sandbox */
+    .mutant-grid {
+      background-color: #0b1324;
+      background-image:
+        linear-gradient(to right, rgba(56, 189, 248, 0.12) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(56, 189, 248, 0.12) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* Conveyor Belt Moving Track Pattern */
+    @keyframes conveyorScroll {
+      from { background-position: 0 0; }
+      to { background-position: -64px 0; }
+    }
+
+    .conveyor-track {
+      background-image: repeating-linear-gradient(
+        -45deg,
+        rgba(30, 41, 59, 0.9),
+        rgba(30, 41, 59, 0.9) 16px,
+        rgba(15, 23, 42, 0.95) 16px,
+        rgba(15, 23, 42, 0.95) 32px
+      );
+      animation: conveyorScroll 2.2s linear infinite;
+    }
+
+    /* Zone Rejection Flash & Shake */
+    @keyframes zoneBounceFlash {
+      0%, 100% { transform: scale(1); filter: brightness(1); }
+      25% { transform: scale(0.97); filter: brightness(1.35) drop-shadow(0 0 22px rgba(244, 63, 94, 0.85)); }
+      55% { transform: scale(1.02); }
+    }
+
+    .zone-reject-anim {
+      animation: zoneBounceFlash 0.42s ease-out;
+    }
+
+    @keyframes gatePulse {
+      0%, 100% { box-shadow: 0 0 24px rgba(168, 85, 247, 0.35), inset 0 0 20px rgba(34, 211, 238, 0.2); }
+      50% { box-shadow: 0 0 42px rgba(34, 211, 238, 0.65), inset 0 0 32px rgba(168, 85, 247, 0.35); }
+    }
+
+    .mystery-portal {
+      animation: gatePulse 2.6s infinite ease-in-out;
+    }
+
+    /* Floating Multi-Touch Dragged Polygon Layer */
+    #dragLayer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 60;
+    }
+
+    .drag-ghost {
+      position: absolute;
+      transform: translate(-50%, -50%) scale(1.12);
+      filter: drop-shadow(0 16px 24px rgba(0, 0, 0, 0.65));
+      will-change: left, top;
+    }
+
+    canvas#confettiCanvas {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 70;
+    }
+  </style>
+</head>
+<body class="flex flex-col justify-between">
+
+  <!-- Confetti Celebration Canvas -->
+  <canvas id="confettiCanvas"></canvas>
+
+  <!-- Multi-Touch Floating Drag Layer (Supports up to 20 simultaneous touches) -->
+  <div id="dragLayer"></div>
+
+  <!-- ==========================================================================
+       1. TOP HUD BAR: TITLE, MODE TOGGLE, LEVEL SELECTOR & TUG-OF-WAR ROPE
+       ========================================================================== -->
+  <header class="h-[74px] px-3 md:px-5 bg-slate-900/95 border-b border-cyan-500/30 flex items-center justify-between gap-2 z-30 shrink-0 shadow-xl">
+    <!-- Brand & Mode Selector -->
+    <div class="flex items-center gap-2.5 min-w-0">
+      <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 via-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg text-slate-950 font-display text-xl font-bold shrink-0">
+        ⬟
+      </div>
+      <div class="min-w-0 hidden sm:block">
+        <h1 class="text-lg lg:text-xl font-display font-bold tracking-tight text-white leading-none">
+          Polygon Tug-of-War
+        </h1>
+        <p class="text-[11px] text-cyan-300 font-semibold mt-0.5 truncate">
+          Properties &amp; Hierarchy Lab
+        </p>
+      </div>
+
+      <!-- 3-Mode Switcher -->
+      <div class="flex items-center bg-slate-950 p-1 rounded-2xl border border-slate-700/80 ml-1">
+        <button onclick="app.setMode('venn')" id="modeBtn_venn" class="ifp-btn !min-h-[38px] px-2.5 md:px-3 text-xs rounded-xl bg-cyan-500 text-slate-950 font-extrabold shadow">
+          <span>⭕</span> <span class="hidden md:inline">Venn Tug-of-War</span><span class="md:hidden">Venn</span>
+        </button>
+        <button onclick="app.setMode('mystery')" id="modeBtn_mystery" class="ifp-btn !min-h-[38px] px-2.5 md:px-3 text-xs rounded-xl text-slate-300 hover:text-white">
+          <span>🔮</span> <span class="hidden md:inline">Mystery Gate</span><span class="md:hidden">Gate</span>
+        </button>
+        <button onclick="app.setMode('mutant')" id="modeBtn_mutant" class="ifp-btn !min-h-[38px] px-2.5 md:px-3 text-xs rounded-xl text-slate-300 hover:text-white">
+          <span>🧬</span> <span class="hidden md:inline">Mutant Lab</span><span class="md:hidden">Mutant</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Center: Live Tug-of-War Rope Meter & 90s Countdown Timer -->
+    <div class="flex-1 max-w-md mx-2 flex flex-col justify-center">
+      <div class="flex items-center justify-between text-[11px] font-extrabold mb-1 px-1">
+        <span class="text-rose-400">⚠️ Gate Resistance</span>
+        <div class="flex items-center gap-2">
+          <span id="scoreReadout" class="font-mono-num text-amber-300">Score: 0</span>
+          <span class="text-slate-600">|</span>
+          <span id="timerReadout" class="font-mono-num px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700">⏱️ 90s</span>
+        </div>
+        <span class="text-emerald-400">🏆 Class Victory</span>
+      </div>
+
+      <!-- Tug-of-War Rope Track -->
+      <div class="relative h-5 rounded-full bg-slate-950 border-2 border-slate-700 overflow-hidden flex items-center shadow-inner">
+        <!-- Left Danger Gradient -->
+        <div class="h-full bg-gradient-to-r from-rose-600/80 to-amber-500/40 transition-all duration-300" id="ropeLeftFill" style="width: 50%"></div>
+        <!-- Right Class Team Gradient -->
+        <div class="h-full bg-gradient-to-r from-cyan-500/40 to-emerald-500/85 flex-1"></div>
+        <!-- Center Victory Threshold Marker -->
+        <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-white/40"></div>
+        <!-- Tug Knot / Flag Marker -->
+        <div id="ropeKnot" class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-7 h-7 rounded-full bg-amber-400 border-2 border-white shadow-lg flex items-center justify-center text-xs font-extrabold text-slate-950 transition-all duration-300" style="left: 50%">
+          🚩
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Level Selector & Classroom Utility Toggles -->
+    <div class="flex items-center gap-1.5 shrink-0">
+      <select id="levelSelect" onchange="app.selectLevel(parseInt(this.value, 10))"
+        class="h-[44px] px-2.5 md:px-3 rounded-xl bg-slate-800 border border-slate-600 text-white font-bold text-xs md:text-sm max-w-[155px] md:max-w-[230px] truncate cursor-pointer">
+        <option value="0">L1: Parallel vs. 4 Equal Sides</option>
+        <option value="1">L2: 4 Right Angles vs. Opp. Equal</option>
+        <option value="2">L3: ≥1 Parallel Pair vs. Bisect Diagonals</option>
+        <option value="3">L4: Perp. Diagonals vs. 2 Adj. Pairs</option>
+        <option value="4">L5: Mystery Rule Deduction</option>
+      </select>
+
+      <button id="btnMarkings" onclick="app.toggleMarkings()" title="Show/Hide Geometric Tick Marks & Parallel Arrows"
+        class="ifp-btn !min-h-[44px] px-2.5 text-xs bg-indigo-500/20 text-indigo-200 border border-indigo-400/40">
+        <span>📐</span> <span class="hidden xl:inline">Markings: ON</span>
+      </button>
+
+      <button id="btnSound" onclick="app.toggleSound()" title="Toggle Sound"
+        class="ifp-btn !min-h-[44px] !min-w-[44px] bg-slate-800 hover:bg-slate-700 text-white text-base border border-slate-700">
+        🔊
+      </button>
+
+      <button onclick="app.resetRound()" title="Reset Round"
+        class="ifp-btn !min-h-[44px] !min-w-[44px] bg-slate-800 hover:bg-slate-700 text-slate-300 text-base border border-slate-700">
+        🔄
+      </button>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       2. MAIN INTERACTIVE THREE-ZONE IFP ARENA
+       ========================================================================== -->
+  <main class="flex-1 flex flex-row overflow-hidden relative" id="mainArena">
+
+    <!-- LEFT PANEL: INTERACTIVE "MUTANT SHAPE" VERTEX SANDBOX -->
+    <aside id="mutantPanel" class="w-[360px] lg:w-[410px] border-r border-slate-700/80 bg-slate-900/95 flex flex-col justify-between p-3 shrink-0 z-20 transition-all duration-300">
+      <!-- Top Classification & Hierarchy Breadcrumb -->
+      <div>
+        <div class="flex items-center justify-between gap-2 mb-1.5">
+          <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-300 flex items-center gap-1">
+            <span>🧬</span> Mutant Shape Lab
+          </span>
+          <button onclick="app.toggleMutantDiagonals()" id="btnMutantDiags" class="px-2 py-0.5 rounded-lg bg-slate-800 text-[11px] font-bold text-cyan-300 border border-slate-700">
+            Diagonals: ON
+          </button>
+        </div>
+
+        <!-- Live Classification Badge -->
+        <div class="p-2.5 rounded-2xl bg-slate-950 border border-cyan-500/40 shadow-inner">
+          <div class="flex items-center justify-between gap-2">
+            <span id="mutantClassBadge" class="font-display font-bold text-lg text-emerald-400">
+              Square
+            </span>
+            <span id="mutantAngleSumBadge" class="font-mono-num text-[11px] font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+              Sum = 360°
+            </span>
+          </div>
+          <!-- Hierarchy Breadcrumb -->
+          <div id="mutantHierarchyTrail" class="text-[11px] font-semibold text-cyan-300/90 mt-1 truncate">
+            Square → Rectangle → Parallelogram → Trapezoid → Quadrilateral
+          </div>
+        </div>
+      </div>
+
+      <!-- Center Interactive SVG Canvas with 4 Glowing Draggable Vertices (A, B, C, D) -->
+      <div class="flex-1 my-2 rounded-2xl border border-slate-700/80 mutant-grid relative overflow-hidden flex items-center justify-center" id="mutantSvgWrapper">
+        <svg id="mutantSvg" viewBox="0 0 340 270" class="w-full h-full">
+          <!-- Dynamically rendered quadrilateral, interior angle arcs, side cm lengths, tick marks, diagonals, and draggable A/B/C/D vertices -->
+        </svg>
+        <div class="absolute bottom-1.5 left-2.5 text-[10px] font-bold text-slate-400 pointer-events-none">
+          👆 Drag corners A, B, C, D to morph shape!
+        </div>
+      </div>
+
+      <!-- Bottom Quick-Morph Presets & "Send to Gate / Test Shape" Action -->
+      <div class="flex flex-col gap-2">
+        <div class="grid grid-cols-3 gap-1.5">
+          <button onclick="app.setMutantPreset('trapezoid')" class="py-1.5 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-amber-300 border border-slate-700">
+            Trapezoid
+          </button>
+          <button onclick="app.setMutantPreset('parallelogram')" class="py-1.5 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-cyan-300 border border-slate-700">
+            Parallelogram
+          </button>
+          <button onclick="app.setMutantPreset('rectangle')" class="py-1.5 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-sky-300 border border-slate-700">
+            Rectangle
+          </button>
+          <button onclick="app.setMutantPreset('rhombus')" class="py-1.5 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-emerald-300 border border-slate-700">
+            Rhombus
+          </button>
+          <button onclick="app.setMutantPreset('square')" class="py-1.5 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-violet-300 border border-slate-700">
+            Square
+          </button>
+          <button onclick="app.setMutantPreset('kite')" class="py-1.5 px-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-rose-300 border border-slate-700">
+            Kite
+          </button>
+        </div>
+
+        <button onclick="app.sendMutantToGate()" id="btnSendMutant"
+          class="ifp-btn w-full bg-gradient-to-r from-amber-400 via-orange-400 to-emerald-400 text-slate-950 font-extrabold text-sm shadow-lg">
+          <span>🚀</span> <span>Send Mutant Shape to Gate / Test!</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- CENTER / RIGHT ARENA: VENN DIAGRAM & MYSTERY RULE GATE -->
+    <section id="sortingArena" class="flex-1 relative flex flex-col justify-between p-3 md:p-5 overflow-hidden bg-gradient-to-b from-slate-900 via-[#0d1628] to-slate-950">
+
+      <!-- Top Rule Header Banner & Student-Friendly Feedback Toast -->
+      <div class="flex flex-col items-center z-10 pointer-events-none">
+        <div id="ruleBannerCard" class="px-4 py-2 rounded-2xl bg-slate-900/90 border border-cyan-500/40 shadow-xl text-center max-w-2xl">
+          <div class="text-[11px] font-extrabold uppercase tracking-wider text-cyan-400" id="levelRuleHeader">
+            Level 1: Quadrilateral Hierarchy
+          </div>
+          <div class="text-sm md:text-base font-bold text-white mt-0.5" id="levelRuleSub">
+            Drag shapes into Zone A (Parallel Sides), Zone B (4 Equal Sides), BOTH, or NEITHER!
+          </div>
+        </div>
+
+        <!-- Dynamic Feedback Toast (Bounce explanations / Success confirmations) -->
+        <div id="feedbackToast" class="hidden mt-2.5 px-4 py-2 rounded-2xl bg-slate-900/95 border-2 border-emerald-400 shadow-2xl text-xs md:text-sm font-bold text-white max-w-xl text-center">
+          Great sort!
+        </div>
+      </div>
+
+      <!-- INTERACTIVE VENN DIAGRAM VIEW -->
+      <div id="vennView" class="flex-1 relative my-2 flex items-center justify-center" data-zone="neither">
+        <!-- Outside Mat Label ("NEITHER") -->
+        <div id="zoneNeitherPill" class="absolute bottom-2 right-3 px-3.5 py-1.5 rounded-xl bg-slate-800/90 border border-slate-600/80 text-xs font-extrabold uppercase tracking-wider text-slate-300 shadow">
+          🚫 NEITHER ZONE (Drop Outside Circles)
+        </div>
+
+        <!-- Docked Shapes in NEITHER zone -->
+        <div id="dock_neither" class="absolute bottom-11 right-3 flex flex-wrap-reverse gap-1.5 max-w-[210px] justify-end pointer-events-none"></div>
+
+        <!-- Venn Diagram Container -->
+        <div class="relative w-full max-w-[780px] h-full max-h-[410px] flex items-center justify-center" id="vennCirclesBox">
+          <!-- Left Circle: Zone A -->
+          <div id="circleA" data-zone="A"
+            class="venn-drop-zone absolute left-[4%] md:left-[7%] w-[56%] h-[88%] rounded-full bg-emerald-500/15 border-4 border-emerald-400/75 flex flex-col justify-between p-4 md:p-6 transition-transform duration-150">
+            <div class="max-w-[65%]">
+              <span class="px-2.5 py-0.5 rounded-lg bg-emerald-500/25 text-emerald-300 text-[11px] font-extrabold uppercase">Zone A</span>
+              <h3 id="labelZoneA" class="font-display font-bold text-sm md:text-lg text-emerald-200 leading-tight mt-1">
+                Has Parallel Sides
+              </h3>
+            </div>
+            <!-- Docked Valid Shapes in Zone A -->
+            <div id="dock_A" class="flex flex-wrap gap-1.5 max-w-[64%] content-end"></div>
+          </div>
+
+          <!-- Right Circle: Zone B -->
+          <div id="circleB" data-zone="B"
+            class="venn-drop-zone absolute right-[4%] md:right-[7%] w-[56%] h-[88%] rounded-full bg-rose-500/15 border-4 border-rose-400/75 flex flex-col justify-between items-end text-right p-4 md:p-6 transition-transform duration-150">
+            <div class="max-w-[65%]">
+              <span class="px-2.5 py-0.5 rounded-lg bg-rose-500/25 text-rose-300 text-[11px] font-extrabold uppercase">Zone B</span>
+              <h3 id="labelZoneB" class="font-display font-bold text-sm md:text-lg text-rose-200 leading-tight mt-1">
+                4 Equal Sides
+              </h3>
+            </div>
+            <!-- Docked Valid Shapes in Zone B -->
+            <div id="dock_B" class="flex flex-wrap gap-1.5 max-w-[64%] justify-end content-end"></div>
+          </div>
+
+          <!-- Center Overlap Intersection Zone: BOTH (A ∩ B) -->
+          <div id="zoneBoth" data-zone="both"
+            class="venn-drop-zone relative z-10 w-[26%] h-[62%] rounded-[48%] bg-violet-500/20 border-2 border-dashed border-violet-300/70 flex flex-col items-center justify-between py-3 px-2 text-center">
+            <div>
+              <span class="px-2.5 py-0.5 rounded-full bg-violet-500/40 text-violet-100 text-[11px] font-extrabold uppercase tracking-wider border border-violet-300/50">
+                BOTH (A &amp; B)
+              </span>
+            </div>
+            <!-- Docked Valid Shapes in Overlap BOTH -->
+            <div id="dock_both" class="flex flex-wrap gap-1 justify-center items-center my-auto"></div>
+            <span class="text-[10px] font-bold text-violet-200/80">Intersection</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MYSTERY RULE GATE VIEW (Deduction Mode) -->
+      <div id="mysteryView" class="hidden flex-1 relative my-2 flex flex-col items-center justify-center gap-3">
+        <!-- Clues Strip -->
+        <div class="flex items-center gap-2 flex-wrap justify-center">
+          <span id="mysteryProgressBadge" class="px-3 py-1 rounded-full bg-violet-500/20 border border-violet-400/50 text-violet-200 text-xs font-extrabold">
+            🔮 Shapes Tested: 0 / 5 to Unlock Rule
+          </span>
+          <button onclick="app.revealMysteryRule()" id="btnRevealRule" class="px-3 py-1 rounded-full bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/50 text-amber-300 text-xs font-extrabold cursor-pointer">
+            👁️ Reveal Rule Now
+          </button>
+        </div>
+
+        <div class="w-full max-w-3xl flex-1 max-h-[340px] grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+          <!-- Left Portal: PASSES MYSTERY RULE -->
+          <div id="gatePassZone" data-zone="gate_pass"
+            class="mystery-portal rounded-3xl bg-gradient-to-b from-violet-950/80 to-cyan-950/70 border-4 border-cyan-400/80 p-4 flex flex-col justify-between items-center text-center relative">
+            <div>
+              <span class="px-3 py-1 rounded-full bg-cyan-400/20 text-cyan-200 text-xs font-extrabold uppercase tracking-wider border border-cyan-400/40">
+                ⚡ MYSTERY RULE GATE (PASS)
+              </span>
+              <h3 id="mysteryRuleTitle" class="font-display font-bold text-xl md:text-2xl text-amber-300 mt-2">
+                MYSTERY RULE ???
+              </h3>
+              <p id="mysteryClueText" class="text-xs text-cyan-200/90 mt-1">
+                Drag polygons here! If a shape obeys the secret rule, the portal accepts it.
+              </p>
+            </div>
+
+            <div id="dock_gate_pass" class="flex flex-wrap gap-2 justify-center items-center my-2"></div>
+
+            <div class="text-[11px] font-bold text-emerald-300">
+              ✅ Drop shapes that MATCH the secret rule here
+            </div>
+          </div>
+
+          <!-- Right Zone: REJECTED / BREAKS RULE -->
+          <div id="gateRejectZone" data-zone="gate_reject"
+            class="rounded-3xl bg-slate-900/85 border-4 border-dashed border-rose-400/60 p-4 flex flex-col justify-between items-center text-center">
+            <div>
+              <span class="px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 text-xs font-extrabold uppercase tracking-wider border border-rose-400/40">
+                🛡️ BREAKS THE RULE (REJECT BIN)
+              </span>
+              <h3 class="font-display font-bold text-lg md:text-xl text-rose-200 mt-2">
+                Does NOT Match Rule
+              </h3>
+              <p class="text-xs text-slate-400 mt-1">
+                Once you deduce the rule, sort non-matching shapes here for bonus points!
+              </p>
+            </div>
+
+            <div id="dock_gate_reject" class="flex flex-wrap gap-2 justify-center items-center my-2"></div>
+
+            <div class="text-[11px] font-bold text-rose-300">
+              ❌ Drop shapes that FAIL the secret rule here
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- ==========================================================================
+       3. BOTTOM MULTI-TOUCH CONVEYOR TRAY (Waist-to-chest height for P5/P6)
+       ========================================================================== -->
+  <footer class="h-[124px] px-3 py-2 bg-slate-950 border-t-2 border-indigo-500/50 flex flex-col justify-between z-30 shrink-0 relative">
+    <div class="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-wider px-1">
+      <span class="text-indigo-300 flex items-center gap-1.5">
+        <span> conveyor</span> <span>• Drag shapes simultaneously (20-point multi-touch) • Tap any shape to inspect properties</span>
+      </span>
+      <span class="text-slate-400 hidden sm:inline" id="conveyorRuleReminder">
+        Active Rule: Parallel Sides vs. 4 Equal Sides
+      </span>
+    </div>
+
+    <!-- Continuously Flowing Conveyor Belt -->
+    <div id="conveyorBelt" class="flex-1 mt-1 rounded-2xl conveyor-track border border-slate-700/90 relative overflow-hidden">
+      <!-- Spawned Polygon Cards move smoothly across this container -->
+    </div>
+  </footer>
+
+  <!-- ==========================================================================
+       SHAPE PROPERTY INSPECTOR POPOVER (Opens when tapping a polygon)
+       ========================================================================== -->
+  <div id="inspectorModal" class="hidden fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4" onclick="app.closeInspector()">
+    <div class="max-w-md w-full rounded-3xl bg-slate-900 border-2 border-cyan-400/60 shadow-2xl p-5 text-left" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 mb-3">
+        <div class="flex items-center gap-3">
+          <div id="inspSvgBox" class="w-14 h-14 rounded-2xl bg-slate-950 border border-slate-700 flex items-center justify-center p-1.5"></div>
+          <div>
+            <span class="text-[11px] font-extrabold uppercase tracking-wider text-cyan-400">Polygon Property Card</span>
+            <h3 id="inspTitle" class="font-display font-bold text-2xl text-white">Rhombus</h3>
+          </div>
+        </div>
+        <button onclick="app.closeInspector()" class="ifp-btn !min-h-[40px] !min-w-[40px] bg-slate-800 text-slate-300">✕</button>
+      </div>
+
+      <p id="inspHierarchy" class="text-xs font-bold text-amber-300 bg-amber-400/10 border border-amber-400/30 rounded-xl px-3 py-2 mb-3">
+        Hierarchy: Rhombus → Parallelogram → Trapezoid → Quadrilateral
+      </p>
+
+      <ul id="inspPropsList" class="space-y-1.5 text-sm text-slate-200 mb-4">
+        <!-- Populated dynamically -->
+      </ul>
+
+      <button onclick="app.closeInspector()" class="ifp-btn w-full bg-cyan-500 text-slate-950 font-extrabold text-base">
+        Got It!
+      </button>
+    </div>
+  </div>
+
+  <!-- ==========================================================================
+       ROUND SUMMARY & HIERARCHY CELEBRATION MODAL
+       ========================================================================== -->
+  <div id="summaryModal" class="hidden fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="max-w-2xl w-full rounded-3xl bg-slate-900 border-2 border-emerald-400/60 shadow-2xl p-6 md:p-8 text-center">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-400/15 text-emerald-300 border border-emerald-400/30 font-extrabold text-xs uppercase tracking-wider mb-3">
+        🏆 TUG-OF-WAR ROUND COMPLETE!
+      </div>
+      <h2 id="summaryTitle" class="text-3xl md:text-4xl font-display font-bold text-white mb-2">
+        Class Victory!
+      </h2>
+      <p id="summarySubtitle" class="text-sm md:text-base text-slate-300 mb-5">
+        You mastered quadrilateral &amp; polygon classification!
+      </p>
+
+      <div id="summaryStatsGrid" class="grid grid-cols-3 gap-3 mb-5">
+        <!-- Score, Sorted Count, Accuracy -->
+      </div>
+
+      <div id="summaryTakeawayBox" class="p-4 rounded-2xl bg-slate-950/90 border border-cyan-500/30 text-left mb-6">
+        <div class="text-xs font-extrabold uppercase tracking-wider text-cyan-400 mb-1">
+          📚 Key Geometry Hierarchy Takeaway
+        </div>
+        <p id="summaryTakeawayText" class="text-xs md:text-sm text-slate-200 leading-relaxed">
+          Every Square has 4 equal sides AND parallel opposite sides, so it belongs in BOTH circles!
+        </p>
+      </div>
+
+      <div class="flex flex-wrap items-center justify-center gap-3">
+        <button onclick="app.nextLevel()" class="ifp-btn px-7 py-4 bg-gradient-to-r from-emerald-400 to-cyan-400 text-slate-950 font-extrabold text-base md:text-lg shadow-lg">
+          Next Rule Challenge &rarr;
+        </button>
+        <button onclick="app.resetRound()" class="ifp-btn px-6 py-4 bg-slate-800 hover:bg-slate-700 text-white text-base border border-slate-600">
+          🔄 Replay Level
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**
+     * ============================================================================
+     * PROCEDURAL WEB AUDIO ENGINE (Zero External Sound URLs)
+     * ============================================================================
+     */
+    class TugAudio {
+      constructor() {
+        this.enabled = true;
+        this.ctx = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) this.ctx = new AC();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      tone(freq, type = 'sine', duration = 0.14, vol = 0.14, delay = 0) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const t = this.ctx.currentTime + delay;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, t);
+        gain.gain.setValueAtTime(vol, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(t);
+        osc.stop(t + duration);
+      }
+
+      grab() { this.tone(440, 'sine', 0.06, 0.08); }
+      snap() { this.tone(620, 'triangle', 0.07, 0.1); }
+      correct() {
+        this.tone(523.25, 'triangle', 0.14, 0.16, 0);
+        this.tone(659.25, 'triangle', 0.16, 0.16, 0.07);
+        this.tone(783.99, 'triangle', 0.22, 0.16, 0.14);
+      }
+      bounce() {
+        this.tone(210, 'sawtooth', 0.16, 0.15, 0);
+        this.tone(145, 'sawtooth', 0.24, 0.15, 0.09);
+      }
+      win() {
+        [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => this.tone(f, 'triangle', 0.3, 0.16, i * 0.09));
+      }
+    }
+
+    const sfx = new TugAudio();
+
+    /**
+     * ============================================================================
+     * POLYGON LIBRARY & HIERARCHICAL GEOMETRIC PROPERTIES
+     * ============================================================================
+     */
+    const POLYGON_TYPES = {
+      square: {
+        key: 'square',
+        name: 'Square',
+        shortName: 'Square',
+        fill: '#8b5cf6',
+        stroke: '#ddd6fe',
+        sides: 4,
+        parallelPairs: 2,
+        allSidesEqual: true,
+        oppSidesEqual: true,
+        twoAdjEqualPairs: true,
+        fourRightAngles: true,
+        diagonalsBisect: true,
+        diagonalsPerp: true,
+        hierarchy: 'Square → Rectangle → Parallelogram → Trapezoid → Quadrilateral',
+        bullets: [
+          '4 equal sides & 4 right angles (90°)',
+          '2 pairs of parallel opposite sides',
+          'Diagonals are equal, bisect each other, AND meet at 90°'
+        ],
+        points: [[22, 16], [78, 16], [78, 72], [22, 72]],
+        markings: 'square'
+      },
+      rectangle: {
+        key: 'rectangle',
+        name: 'Rectangle',
+        shortName: 'Rectangle',
+        fill: '#0ea5e9',
+        stroke: '#bae6fd',
+        sides: 4,
+        parallelPairs: 2,
+        allSidesEqual: false,
+        oppSidesEqual: true,
+        twoAdjEqualPairs: false,
+        fourRightAngles: true,
+        diagonalsBisect: true,
+        diagonalsPerp: false,
+        hierarchy: 'Rectangle → Parallelogram → Trapezoid → Quadrilateral',
+        bullets: [
+          '4 right angles (90°)',
+          'Opposite sides are parallel and equal in length',
+          'Diagonals bisect each other (but do NOT cross at 90° unless it is a square)'
+        ],
+        points: [[12, 24], [88, 24], [88, 66], [12, 66]],
+        markings: 'rectangle'
+      },
+      rhombus: {
+        key: 'rhombus',
+        name: 'Rhombus',
+        shortName: 'Rhombus',
+        fill: '#10b981',
+        stroke: '#a7f3d0',
+        sides: 4,
+        parallelPairs: 2,
+        allSidesEqual: true,
+        oppSidesEqual: true,
+        twoAdjEqualPairs: true,
+        fourRightAngles: false,
+        diagonalsBisect: true,
+        diagonalsPerp: true,
+        hierarchy: 'Rhombus → Parallelogram → Trapezoid → Quadrilateral',
+        bullets: [
+          'All 4 sides are equal in length',
+          '2 pairs of parallel opposite sides',
+          'Diagonals bisect each other at right angles (90°)'
+        ],
+        points: [[50, 10], [86, 45], [50, 80], [14, 45]],
+        markings: 'rhombus'
+      },
+      parallelogram: {
+        key: 'parallelogram',
+        name: 'Parallelogram',
+        shortName: 'Parallelogram',
+        fill: '#06b6d4',
+        stroke: '#a5f3fc',
+        sides: 4,
+        parallelPairs: 2,
+        allSidesEqual: false,
+        oppSidesEqual: true,
+        twoAdjEqualPairs: false,
+        fourRightAngles: false,
+        diagonalsBisect: true,
+        diagonalsPerp: false,
+        hierarchy: 'Parallelogram → Trapezoid → Quadrilateral',
+        bullets: [
+          '2 pairs of parallel opposite sides',
+          'Opposite sides and opposite angles are equal',
+          'Diagonals bisect each other'
+        ],
+        points: [[26, 22], [90, 22], [74, 68], [10, 68]],
+        markings: 'parallelogram'
+      },
+      iso_trapezoid: {
+        key: 'iso_trapezoid',
+        name: 'Isosceles Trapezoid',
+        shortName: 'Iso. Trapezoid',
+        fill: '#f59e0b',
+        stroke: '#fde68a',
+        sides: 4,
+        parallelPairs: 1,
+        allSidesEqual: false,
+        oppSidesEqual: false,
+        twoAdjEqualPairs: false,
+        fourRightAngles: false,
+        diagonalsBisect: false,
+        diagonalsPerp: false,
+        hierarchy: 'Isosceles Trapezoid → Trapezoid → Quadrilateral',
+        bullets: [
+          'Exactly 1 pair of parallel sides (top & bottom bases)',
+          'Non-parallel legs are equal in length',
+          'Diagonals are equal in length, but do NOT bisect each other'
+        ],
+        points: [[28, 22], [72, 22], [88, 68], [12, 68]],
+        markings: 'iso_trapezoid'
+      },
+      right_trapezoid: {
+        key: 'right_trapezoid',
+        name: 'Right Trapezoid',
+        shortName: 'Right Trapezoid',
+        fill: '#f97316',
+        stroke: '#fed7aa',
+        sides: 4,
+        parallelPairs: 1,
+        allSidesEqual: false,
+        oppSidesEqual: false,
+        twoAdjEqualPairs: false,
+        fourRightAngles: false,
+        diagonalsBisect: false,
+        diagonalsPerp: false,
+        hierarchy: 'Right Trapezoid → Trapezoid → Quadrilateral',
+        bullets: [
+          'Exactly 1 pair of parallel sides',
+          'Contains two 90° right angles along one vertical leg',
+          'Diagonals do NOT bisect each other'
+        ],
+        points: [[20, 20], [64, 20], [88, 68], [20, 68]],
+        markings: 'right_trapezoid'
+      },
+      kite: {
+        key: 'kite',
+        name: 'Kite',
+        shortName: 'Kite',
+        fill: '#f43f5e',
+        stroke: '#fecdd3',
+        sides: 4,
+        parallelPairs: 0,
+        allSidesEqual: false,
+        oppSidesEqual: false,
+        twoAdjEqualPairs: true,
+        fourRightAngles: false,
+        diagonalsBisect: false,
+        diagonalsPerp: true,
+        hierarchy: 'Kite → Quadrilateral (No parallel sides!)',
+        bullets: [
+          '2 distinct pairs of equal adjacent (touching) sides',
+          '0 pairs of parallel sides',
+          'Diagonals cross at 90° (perpendicular), only 1 diagonal is bisected'
+        ],
+        points: [[50, 8], [80, 36], [50, 84], [20, 36]],
+        markings: 'kite'
+      },
+      eq_triangle: {
+        key: 'eq_triangle',
+        name: 'Equilateral Triangle',
+        shortName: 'Eq. Triangle',
+        fill: '#14b8a6',
+        stroke: '#99f6e4',
+        sides: 3,
+        parallelPairs: 0,
+        allSidesEqual: true,
+        oppSidesEqual: false,
+        twoAdjEqualPairs: false,
+        fourRightAngles: false,
+        diagonalsBisect: false,
+        diagonalsPerp: false,
+        hierarchy: 'Equilateral Triangle → Isosceles Triangle → Triangle (3 sides)',
+        bullets: [
+          '3 equal sides and 3 equal interior angles (60° each)',
+          '0 parallel sides and 0 diagonals'
+        ],
+        points: [[50, 12], [86, 76], [14, 76]],
+        markings: 'eq_triangle'
+      },
+      pentagon: {
+        key: 'pentagon',
+        name: 'Regular Pentagon',
+        shortName: 'Pentagon',
+        fill: '#6366f1',
+        stroke: '#c7d2fe',
+        sides: 5,
+        parallelPairs: 0,
+        allSidesEqual: true,
+        oppSidesEqual: false,
+        twoAdjEqualPairs: false,
+        fourRightAngles: false,
+        diagonalsBisect: false,
+        diagonalsPerp: false,
+        hierarchy: 'Regular Pentagon → Polygon (5 sides)',
+        bullets: [
+          '5 equal sides and 5 equal interior angles (108° each)',
+          '0 pairs of parallel sides'
+        ],
+        points: [[50, 10], [88, 38], [73, 80], [27, 80], [12, 38]],
+        markings: 'regular_poly'
+      },
+      hexagon: {
+        key: 'hexagon',
+        name: 'Regular Hexagon',
+        shortName: 'Hexagon',
+        fill: '#ec4899',
+        stroke: '#fbcfe8',
+        sides: 6,
+        parallelPairs: 3,
+        allSidesEqual: true,
+        oppSidesEqual: true,
+        twoAdjEqualPairs: false,
+        fourRightAngles: false,
+        diagonalsBisect: true,
+        diagonalsPerp: false,
+        hierarchy: 'Regular Hexagon → Polygon (6 sides)',
+        bullets: [
+          '6 equal sides and 6 equal interior angles (120° each)',
+          '3 pairs of parallel opposite sides'
+        ],
+        points: [[30, 14], [70, 14], [88, 45], [70, 76], [30, 76], [12, 45]],
+        markings: 'regular_poly'
+      }
+    };
+
+    /**
+     * ============================================================================
+     * 5 PROGRESSIVE CURRICULUM LEVELS (Venn Rules + Mystery Deduction Rules)
+     * ============================================================================
+     */
+    const LEVELS = [
+      {
+        id: 1,
+        title: 'Level 1: Parallel Sides vs. 4 Equal Sides',
+        subtitle: 'Why does a Square land in BOTH circles while a Rhombus also joins it?',
+        labelA: 'Has Parallel Sides',
+        labelB: '4 Equal Sides',
+        testA: (p) => p.parallelPairs >= 1,
+        testB: (p) => p.allSidesEqual === true,
+        mysteryRuleLabel: '4 Equal Sides (Equilateral Polygon)',
+        mysteryClue: 'Clue: Check the tick marks on all sides of the shape!',
+        testMystery: (p) => p.allSidesEqual === true,
+        takeaway: 'Every Square and Rhombus has 4 equal sides AND parallel opposite sides, so both belong in BOTH (the center intersection)!'
+      },
+      {
+        id: 2,
+        title: 'Level 2: 4 Right Angles vs. Opposite Sides Equal',
+        subtitle: 'Bridge the Rectangle → Parallelogram hierarchy!',
+        labelA: '4 Right Angles (90°)',
+        labelB: 'Opposite Sides Equal',
+        testA: (p) => p.fourRightAngles === true,
+        testB: (p) => p.oppSidesEqual === true,
+        mysteryRuleLabel: '4 Right Angles (90° at every corner)',
+        mysteryClue: 'Clue: Look for right-angle corner squares at all 4 vertices!',
+        testMystery: (p) => p.fourRightAngles === true,
+        takeaway: 'Every Rectangle and Square has 4 right angles AND equal opposite sides, proving that every Rectangle is a special Parallelogram!'
+      },
+      {
+        id: 3,
+        title: 'Level 3: ≥1 Pair of Parallel Sides vs. Diagonals Bisect Each Other',
+        subtitle: 'Secondary Bridge: Distinguish Trapezoids from the Parallelogram family!',
+        labelA: 'At Least 1 Pair Parallel',
+        labelB: 'Diagonals Bisect Each Other',
+        testA: (p) => p.parallelPairs >= 1,
+        testB: (p) => p.diagonalsBisect === true,
+        mysteryRuleLabel: 'Diagonals Bisect Each Other',
+        mysteryClue: 'Clue: Only shapes with 2 pairs of parallel opposite sides have diagonals that cut each other in half!',
+        testMystery: (p) => p.diagonalsBisect === true,
+        takeaway: 'Trapezoids have 1 pair of parallel sides (Zone A only), whereas Parallelograms, Rectangles, Rhombuses, and Squares have diagonals that bisect each other (BOTH)!'
+      },
+      {
+        id: 4,
+        title: 'Level 4: Perpendicular Diagonals vs. 2 Pairs of Adjacent Equal Sides',
+        subtitle: 'Discover how Kites, Rhombuses, and Squares share diagonal symmetry!',
+        labelA: 'Perpendicular Diagonals (90°)',
+        labelB: '2 Pairs Adjacent Equal Sides',
+        testA: (p) => p.diagonalsPerp === true,
+        testB: (p) => p.twoAdjEqualPairs === true,
+        mysteryRuleLabel: 'Perpendicular Diagonals (Cross at 90°)',
+        mysteryClue: 'Clue: Kite, Rhombus, and Square all pass through this gate!',
+        testMystery: (p) => p.diagonalsPerp === true,
+        takeaway: 'A Kite has no parallel sides, yet its diagonals still cross at 90° and it has 2 pairs of equal adjacent sides—just like a Rhombus and Square!'
+      },
+      {
+        id: 5,
+        title: 'Level 5: Master Mystery Deduction',
+        subtitle: 'Test shapes against the gate to deduce the hidden property!',
+        labelA: 'Exactly 4 Sides (Quadrilateral)',
+        labelB: 'At Least 2 Parallel Pairs',
+        testA: (p) => p.sides === 4,
+        testB: (p) => p.parallelPairs >= 2,
+        mysteryRuleLabel: 'Quadrilateral with 2 Pairs of Parallel Sides (Parallelogram Family)',
+        mysteryClue: 'Clue: Trapezoids and Kites bounce back, while Squares, Rectangles, and Rhombuses pass!',
+        testMystery: (p) => p.sides === 4 && p.parallelPairs >= 2,
+        takeaway: 'Parallelograms, Rectangles, Rhombuses, and Squares all have 4 sides and 2 pairs of parallel sides!'
+      }
+    ];
+
+    /**
+     * ============================================================================
+     * SVG RENDERER FOR POLYGONS WITH GEOMETRIC MARKINGS
+     * ============================================================================
+     */
+    function renderPolygonSVG(polyDef, showMarkings = true, sizePx = 68) {
+      const ptsStr = polyDef.points.map(pt => pt.join(',')).join(' ');
+      let markingsSvg = '';
+
+      if (showMarkings) {
+        const m = polyDef.markings;
+        if (m === 'square') {
+          markingsSvg = `
+            <polyline points="22,26 32,26 32,16" fill="none" stroke="#fde047" stroke-width="2"/>
+            <polyline points="68,16 68,26 78,26" fill="none" stroke="#fde047" stroke-width="2"/>
+            <line x1="50" y1="11" x2="50" y2="21" stroke="#fff" stroke-width="2.2"/>
+            <line x1="50" y1="67" x2="50" y2="77" stroke="#fff" stroke-width="2.2"/>
+            <line x1="17" y1="44" x2="27" y2="44" stroke="#fff" stroke-width="2.2"/>
+            <line x1="73" y1="44" x2="83" y2="44" stroke="#fff" stroke-width="2.2"/>
+          `;
+        } else if (m === 'rectangle') {
+          markingsSvg = `
+            <polyline points="12,34 22,34 22,24" fill="none" stroke="#fde047" stroke-width="2"/>
+            <polyline points="78,24 78,34 88,34" fill="none" stroke="#fde047" stroke-width="2"/>
+            <line x1="50" y1="19" x2="50" y2="29" stroke="#fff" stroke-width="2.2"/>
+            <line x1="50" y1="61" x2="50" y2="71" stroke="#fff" stroke-width="2.2"/>
+            <line x1="7" y1="43" x2="17" y2="43" stroke="#fff" stroke-width="2"/>
+            <line x1="7" y1="47" x2="17" y2="47" stroke="#fff" stroke-width="2"/>
+            <line x1="83" y1="43" x2="93" y2="43" stroke="#fff" stroke-width="2"/>
+            <line x1="83" y1="47" x2="93" y2="47" stroke="#fff" stroke-width="2"/>
+          `;
+        } else if (m === 'rhombus') {
+          markingsSvg = `
+            <line x1="29" y1="24" x2="35" y2="31" stroke="#fff" stroke-width="2.2"/>
+            <line x1="71" y1="24" x2="65" y2="31" stroke="#fff" stroke-width="2.2"/>
+            <line x1="71" y1="66" x2="65" y2="59" stroke="#fff" stroke-width="2.2"/>
+            <line x1="29" y1="66" x2="35" y2="59" stroke="#fff" stroke-width="2.2"/>
+          `;
+        } else if (m === 'parallelogram') {
+          markingsSvg = `
+            <polyline points="54,18 60,22 54,26" fill="none" stroke="#fde047" stroke-width="2.2"/>
+            <polyline points="38,64 44,68 38,72" fill="none" stroke="#fde047" stroke-width="2.2"/>
+          `;
+        } else if (m === 'iso_trapezoid') {
+          markingsSvg = `
+            <polyline points="47,18 53,22 47,26" fill="none" stroke="#fde047" stroke-width="2.2"/>
+            <polyline points="47,64 53,68 47,72" fill="none" stroke="#fde047" stroke-width="2.2"/>
+            <line x1="16" y1="44" x2="24" y2="46" stroke="#fff" stroke-width="2.2"/>
+            <line x1="84" y1="44" x2="76" y2="46" stroke="#fff" stroke-width="2.2"/>
+          `;
+        } else if (m === 'right_trapezoid') {
+          markingsSvg = `
+            <polyline points="20,30 30,30 30,20" fill="none" stroke="#fde047" stroke-width="2"/>
+            <polyline points="20,58 30,58 30,68" fill="none" stroke="#fde047" stroke-width="2"/>
+          `;
+        } else if (m === 'kite') {
+          markingsSvg = `
+            <line x1="31" y1="19" x2="38" y2="25" stroke="#fff" stroke-width="2.2"/>
+            <line x1="69" y1="19" x2="62" y2="25" stroke="#fff" stroke-width="2.2"/>
+            <line x1="30" y1="58" x2="38" y2="54" stroke="#fff" stroke-width="2"/>
+            <line x1="32" y1="62" x2="40" y2="58" stroke="#fff" stroke-width="2"/>
+            <line x1="70" y1="58" x2="62" y2="54" stroke="#fff" stroke-width="2"/>
+            <line x1="68" y1="62" x2="60" y2="58" stroke="#fff" stroke-width="2"/>
+          `;
+        }
+      }
+
+      return `
+        <svg width="${sizePx}" height="${sizePx * 0.85}" viewBox="0 0 100 90" class="overflow-visible">
+          <polygon points="${ptsStr}" fill="${polyDef.fill}" fill-opacity="0.88" stroke="${polyDef.stroke}" stroke-width="3.5" stroke-linejoin="round"/>
+          ${markingsSvg}
+        </svg>
+      `;
+    }
+
+    /**
+     * ============================================================================
+     * MUTANT SHAPE QUADRILATERAL ENGINE (Live Angles, Side Lengths & Hierarchy)
+     * ============================================================================
+     */
+    class MutantShapeLab {
+      constructor(appRef) {
+        this.app = appRef;
+        this.svg = document.getElementById('mutantSvg');
+        this.showDiagonals = true;
+        this.draggingVertexIdx = null;
+
+        // 4 vertices in SVG coordinates (340 x 270 viewBox, 28px = 1 cm scale)
+        this.vertices = [
+          { id: 'A', x: 112, y: 70 },
+          { id: 'B', x: 224, y: 70 },
+          { id: 'C', x: 224, y: 182 },
+          { id: 'D', x: 112, y: 182 }
+        ];
+
+        this.bindVertexDrag();
+        this.setPreset('trapezoid');
+      }
+
+      setPreset(presetName) {
+        const presets = {
+          trapezoid: [
+            { id: 'A', x: 112, y: 70 },
+            { id: 'B', x: 224, y: 70 },
+            { id: 'C', x: 266, y: 182 },
+            { id: 'D', x: 70, y: 182 }
+          ],
+          parallelogram: [
+            { id: 'A', x: 126, y: 70 },
+            { id: 'B', x: 266, y: 70 },
+            { id: 'C', x: 224, y: 182 },
+            { id: 'D', x: 84, y: 182 }
+          ],
+          rectangle: [
+            { id: 'A', x: 84, y: 70 },
+            { id: 'B', x: 252, y: 70 },
+            { id: 'C', x: 252, y: 182 },
+            { id: 'D', x: 84, y: 182 }
+          ],
+          rhombus: [
+            { id: 'A', x: 168, y: 42 },
+            { id: 'B', x: 252, y: 126 },
+            { id: 'C', x: 168, y: 210 },
+            { id: 'D', x: 84, y: 126 }
+          ],
+          square: [
+            { id: 'A', x: 112, y: 70 },
+            { id: 'B', x: 224, y: 70 },
+            { id: 'C', x: 224, y: 182 },
+            { id: 'D', x: 112, y: 182 }
+          ],
+          kite: [
+            { id: 'A', x: 168, y: 36 },
+            { id: 'B', x: 238, y: 112 },
+            { id: 'C', x: 168, y: 224 },
+            { id: 'D', x: 98, y: 112 }
+          ]
+        };
+
+        if (presets[presetName]) {
+          this.vertices = presets[presetName].map(v => ({ ...v }));
+          sfx.snap();
+          this.updateAndRender();
+        }
+      }
+
+      bindVertexDrag() {
+        this.svg.addEventListener('pointerdown', (e) => {
+          const target = e.target.closest('[data-vidx]');
+          if (!target) return;
+          e.stopPropagation();
+          this.svg.setPointerCapture(e.pointerId);
+          this.draggingVertexIdx = parseInt(target.dataset.vidx, 10);
+          sfx.grab();
+        });
+
+        this.svg.addEventListener('pointermove', (e) => {
+          if (this.draggingVertexIdx === null) return;
+          const rect = this.svg.getBoundingClientRect();
+          const scaleX = 340 / rect.width;
+          const scaleY = 270 / rect.height;
+
+          let vx = (e.clientX - rect.left) * scaleX;
+          let vy = (e.clientY - rect.top) * scaleY;
+
+          // Snap to 14px half-grid increments for clean right angles & parallel lines!
+          const snap = 14;
+          vx = Math.round(vx / snap) * snap;
+          vy = Math.round(vy / snap) * snap;
+
+          vx = Math.max(28, Math.min(312, vx));
+          vy = Math.max(28, Math.min(242, vy));
+
+          const v = this.vertices[this.draggingVertexIdx];
+          if (v.x !== vx || v.y !== vy) {
+            v.x = vx;
+            v.y = vy;
+            this.updateAndRender();
+          }
+        });
+
+        const release = (e) => {
+          if (this.draggingVertexIdx !== null) {
+            this.draggingVertexIdx = null;
+            sfx.snap();
+          }
+        };
+        this.svg.addEventListener('pointerup', release);
+        this.svg.addEventListener('pointercancel', release);
+      }
+
+      analyzeProperties() {
+        const v = this.vertices;
+        const dist = (p1, p2) => Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        const pxPerCm = 28;
+
+        // Side lengths in cm (1 decimal place)
+        const s0 = dist(v[0], v[1]) / pxPerCm; // AB
+        const s1 = dist(v[1], v[2]) / pxPerCm; // BC
+        const s2 = dist(v[2], v[3]) / pxPerCm; // CD
+        const s3 = dist(v[3], v[0]) / pxPerCm; // DA
+        const sidesCm = [s0, s1, s2, s3];
+
+        // Interior angles at each vertex
+        const interiorAngles = v.map((curr, idx) => {
+          const prev = v[(idx + 3) % 4];
+          const next = v[(idx + 1) % 4];
+          const u1x = prev.x - curr.x, u1y = prev.y - curr.y;
+          const u2x = next.x - curr.x, u2y = next.y - curr.y;
+          const dot = u1x * u2x + u1y * u2y;
+          const mag = Math.hypot(u1x, u1y) * Math.hypot(u2x, u2y) || 1;
+          const deg = Math.acos(Math.max(-1, Math.min(1, dot / mag))) * (180 / Math.PI);
+          return Math.round(deg);
+        });
+
+        // Parallel opposite edges test (angle tolerance ~3.5 degrees)
+        const areParallel = (a1, a2, b1, b2) => {
+          const dx1 = a2.x - a1.x, dy1 = a2.y - a1.y;
+          const dx2 = b2.x - b1.x, dy2 = b2.y - b1.y;
+          const m1 = Math.hypot(dx1, dy1) || 1;
+          const m2 = Math.hypot(dx2, dy2) || 1;
+          const cross = Math.abs((dx1 * dy2 - dy1 * dx2) / (m1 * m2));
+          return cross < 0.065;
+        };
+
+        const abParallelCd = areParallel(v[0], v[1], v[3], v[2]);
+        const bcParallelDa = areParallel(v[1], v[2], v[0], v[3]);
+        const parallelPairs = (abParallelCd ? 1 : 0) + (bcParallelDa ? 1 : 0);
+
+        const approxEq = (a, b, tol = 0.22) => Math.abs(a - b) <= tol;
+        const allSidesEqual = approxEq(s0, s1) && approxEq(s1, s2) && approxEq(s2, s3);
+        const oppSidesEqual = approxEq(s0, s2) && approxEq(s1, s3);
+        const twoAdjEqualPairs = (approxEq(s0, s1) && approxEq(s2, s3)) || (approxEq(s1, s2) && approxEq(s3, s0));
+        const fourRightAngles = interiorAngles.every(a => Math.abs(a - 90) <= 3);
+
+        // Diagonals AC and BD
+        const acDx = v[2].x - v[0].x, acDy = v[2].y - v[0].y;
+        const bdDx = v[3].x - v[1].x, bdDy = v[3].y - v[1].y;
+        const acMag = Math.hypot(acDx, acDy) || 1;
+        const bdMag = Math.hypot(bdDx, bdDy) || 1;
+        const diagDot = Math.abs((acDx * bdDx + acDy * bdDy) / (acMag * bdMag));
+        const diagonalsPerp = diagDot < 0.07;
+
+        // Diagonals bisect each other if midpoints coincide
+        const midAC = { x: (v[0].x + v[2].x) / 2, y: (v[0].y + v[2].y) / 2 };
+        const midBD = { x: (v[1].x + v[3].x) / 2, y: (v[1].y + v[3].y) / 2 };
+        const diagonalsBisect = Math.hypot(midAC.x - midBD.x, midAC.y - midBD.y) < 8;
+
+        // Determine Hierarchical Classification
+        let name = 'General Quadrilateral';
+        let hierarchy = 'Quadrilateral (4 sides, angle sum = 360°)';
+        let color = '#94a3b8';
+
+        if (parallelPairs === 2 && allSidesEqual && fourRightAngles) {
+          name = 'Square';
+          hierarchy = 'Square → Rectangle → Parallelogram → Trapezoid → Quadrilateral';
+          color = '#a78bfa';
+        } else if (parallelPairs === 2 && fourRightAngles) {
+          name = 'Rectangle';
+          hierarchy = 'Rectangle → Parallelogram → Trapezoid → Quadrilateral';
+          color = '#38bdf8';
+        } else if (parallelPairs === 2 && allSidesEqual) {
+          name = 'Rhombus';
+          hierarchy = 'Rhombus → Parallelogram → Trapezoid → Quadrilateral';
+          color = '#34d399';
+        } else if (parallelPairs === 2) {
+          name = 'Parallelogram';
+          hierarchy = 'Parallelogram → Trapezoid → Quadrilateral';
+          color = '#22d3ee';
+        } else if (parallelPairs === 1) {
+          const isIso = (abParallelCd && approxEq(s1, s3)) || (bcParallelDa && approxEq(s0, s2));
+          name = isIso ? 'Isosceles Trapezoid' : 'Trapezoid';
+          hierarchy = `${name} → Quadrilateral (1 pair of parallel sides)`;
+          color = '#fbbf24';
+        } else if (twoAdjEqualPairs) {
+          name = 'Kite';
+          hierarchy = 'Kite → Quadrilateral (2 pairs of adjacent equal sides)';
+          color = '#fb7185';
+        }
+
+        return {
+          key: 'mutant_custom',
+          name,
+          shortName: name,
+          fill: color,
+          stroke: '#ffffff',
+          sides: 4,
+          sidesCm,
+          interiorAngles,
+          parallelPairs,
+          abParallelCd,
+          bcParallelDa,
+          allSidesEqual,
+          oppSidesEqual,
+          twoAdjEqualPairs,
+          fourRightAngles,
+          diagonalsBisect,
+          diagonalsPerp,
+          hierarchy,
+          bullets: [
+            `Classification: ${name}`,
+            `Parallel pairs: ${parallelPairs} • All sides equal: ${allSidesEqual ? 'Yes' : 'No'}`,
+            `4 Right angles: ${fourRightAngles ? 'Yes' : 'No'} • Diagonals bisect: ${diagonalsBisect ? 'Yes' : 'No'}`
+          ],
+          points: v.map(pt => [Math.round((pt.x / 340) * 100), Math.round((pt.y / 270) * 90)]),
+          markings: 'none'
+        };
+      }
+
+      updateAndRender() {
+        const props = this.analyzeProperties();
+        const v = this.vertices;
+
+        // Update Top Classification Badge & Hierarchy Trail
+        const badgeEl = document.getElementById('mutantClassBadge');
+        badgeEl.textContent = props.name;
+        badgeEl.style.color = props.fill;
+        document.getElementById('mutantHierarchyTrail').textContent = props.hierarchy;
+
+        const angleSum = props.interiorAngles.reduce((a, b) => a + b, 0);
+        document.getElementById('mutantAngleSumBadge').textContent = `Sum = ${angleSum}°`;
+
+        // Build Live SVG Elements
+        const polyPoints = v.map(pt => `${pt.x},${pt.y}`).join(' ');
+
+        // Dashed Diagonals
+        let diagSvg = '';
+        if (this.showDiagonals) {
+          diagSvg = `
+            <line x1="${v[0].x}" y1="${v[0].y}" x2="${v[2].x}" y2="${v[2].y}" stroke="#94a3b8" stroke-width="1.8" stroke-dasharray="5,4"/>
+            <line x1="${v[1].x}" y1="${v[1].y}" x2="${v[3].x}" y2="${v[3].y}" stroke="#94a3b8" stroke-width="1.8" stroke-dasharray="5,4"/>
+          `;
+        }
+
+        // Side length labels & equal tick marks
+        let sidesSvg = '';
+        for (let i = 0; i < 4; i++) {
+          const p1 = v[i];
+          const p2 = v[(i + 1) % 4];
+          const mx = (p1.x + p2.x) / 2;
+          const my = (p1.y + p2.y) / 2;
+          const lenText = `${props.sidesCm[i].toFixed(1)}cm`;
+
+          sidesSvg += `
+            <rect x="${mx - 22}" y="${my - 9}" width="44" height="17" rx="5" fill="#0f172a" stroke="#334155" stroke-width="1"/>
+            <text x="${mx}" y="${my + 3}" fill="#e2e8f0" font-size="9.5" font-weight="800" text-anchor="middle" font-family="JetBrains Mono, monospace">${lenText}</text>
+          `;
+        }
+
+        // Interior angle degree badges near each corner
+        const cx = v.reduce((s, p) => s + p.x, 0) / 4;
+        const cy = v.reduce((s, p) => s + p.y, 0) / 4;
+        let anglesSvg = '';
+        v.forEach((pt, idx) => {
+          const deg = props.interiorAngles[idx];
+          const inwardX = pt.x + (cx - pt.x) * 0.28;
+          const inwardY = pt.y + (cy - pt.y) * 0.28;
+          const is90 = Math.abs(deg - 90) <= 3;
+
+          anglesSvg += `
+            <text x="${inwardX}" y="${inwardY + 3}" fill="${is90 ? '#fde047' : '#38bdf8'}" font-size="10.5" font-weight="800" text-anchor="middle" font-family="JetBrains Mono, monospace">
+              ${deg}°
+            </text>
+          `;
+        });
+
+        // Glowing Multi-Touch Draggable Vertex Handles (A, B, C, D)
+        let handlesSvg = '';
+        v.forEach((pt, idx) => {
+          handlesSvg += `
+            <g data-vidx="${idx}" class="cursor-grab">
+              <circle cx="${pt.x}" cy="${pt.y}" r="20" fill="rgba(34, 211, 238, 0.16)" />
+              <circle cx="${pt.x}" cy="${pt.y}" r="11" fill="#0f172a" stroke="#22d3ee" stroke-width="3" />
+              <text x="${pt.x}" y="${pt.y + 4}" fill="#ffffff" font-size="11" font-weight="800" text-anchor="middle">${pt.id}</text>
+            </g>
+          `;
+        });
+
+        this.svg.innerHTML = `
+          <polygon points="${polyPoints}" fill="${props.fill}" fill-opacity="0.22" stroke="${props.fill}" stroke-width="3.5" stroke-linejoin="round" />
+          ${diagSvg}
+          ${sidesSvg}
+          ${anglesSvg}
+          ${handlesSvg}
+        `;
+      }
+    }
+
+    /**
+     * ============================================================================
+     * MAIN POLYGON TUG-OF-WAR APPLICATION CONTROLLER
+     * ============================================================================
+     */
+    class PolygonTugOfWarApp {
+      constructor() {
+        this.mode = 'venn'; // 'venn' | 'mystery' | 'mutant'
+        this.levelIdx = 0;
+        this.showMarkings = true;
+
+        // Tug-of-War Rope & Score State
+        this.ropePos = 50; // 0 = Gate Wins, 100 = Class Wins!
+        this.score = 0;
+        this.streak = 0;
+        this.sortedCount = 0;
+        this.attemptCount = 0;
+        this.timeLeft = 90;
+        this.roundActive = true;
+
+        // Mystery Gate State
+        this.mysteryTestedCount = 0;
+        this.mysteryRevealed = false;
+
+        // Conveyor Belt Items
+        this.conveyorItems = [];
+        this.nextItemId = 1;
+        this.spawnCooldown = 0;
+
+        // Multi-Touch Active Drags keyed by pointerId (Supports 20 simultaneous touches!)
+        this.activeDrags = new Map();
+
+        // Confetti particles
+        this.confetti = [];
+
+        this.mutantLab = new MutantShapeLab(this);
+        this.setupLevel(0);
+        this.startTimer();
+
+        this.lastTime = performance.now();
+        requestAnimationFrame((t) => this.loop(t));
+      }
+
+      /**
+       * ========================================================================
+       * MODE & LEVEL CONFIGURATION
+       * ========================================================================
+       */
+      setMode(newMode) {
+        this.mode = newMode;
+
+        ['venn', 'mystery', 'mutant'].forEach(m => {
+          const btn = document.getElementById(`modeBtn_${m}`);
+          if (m === newMode) {
+            btn.className = 'ifp-btn !min-h-[38px] px-2.5 md:px-3 text-xs rounded-xl bg-cyan-500 text-slate-950 font-extrabold shadow';
+          } else {
+            btn.className = 'ifp-btn !min-h-[38px] px-2.5 md:px-3 text-xs rounded-xl text-slate-300 hover:text-white';
+          }
+        });
+
+        const mutantPanel = document.getElementById('mutantPanel');
+        const sortingArena = document.getElementById('sortingArena');
+        const vennView = document.getElementById('vennView');
+        const mysteryView = document.getElementById('mysteryView');
+
+        if (newMode === 'mutant') {
+          mutantPanel.classList.remove('w-[360px]', 'lg:w-[410px]');
+          mutantPanel.classList.add('w-full', 'max-w-3xl', 'mx-auto');
+          sortingArena.classList.add('hidden');
+        } else {
+          mutantPanel.classList.remove('w-full', 'max-w-3xl', 'mx-auto');
+          mutantPanel.classList.add('w-[360px]', 'lg:w-[410px]');
+          sortingArena.classList.remove('hidden');
+
+          if (newMode === 'venn') {
+            vennView.classList.remove('hidden');
+            mysteryView.classList.add('hidden');
+          } else {
+            vennView.classList.add('hidden');
+            mysteryView.classList.remove('hidden');
+          }
+        }
+
+        sfx.snap();
+      }
+
+      selectLevel(idx) {
+        this.levelIdx = idx;
+        this.setupLevel(idx);
+      }
+
+      setupLevel(idx) {
+        const lvl = LEVELS[idx];
+        this.ropePos = 50;
+        this.score = 0;
+        this.streak = 0;
+        this.sortedCount = 0;
+        this.attemptCount = 0;
+        this.timeLeft = 90;
+        this.roundActive = true;
+        this.mysteryTestedCount = 0;
+        this.mysteryRevealed = false;
+
+        document.getElementById('summaryModal').classList.add('hidden');
+        document.getElementById('levelRuleHeader').textContent = lvl.title;
+        document.getElementById('levelRuleSub').textContent = lvl.subtitle;
+        document.getElementById('labelZoneA').textContent = lvl.labelA;
+        document.getElementById('labelZoneB').textContent = lvl.labelB;
+        document.getElementById('conveyorRuleReminder').textContent = `Active Rule: ${lvl.labelA} vs. ${lvl.labelB}`;
+
+        // Reset Mystery Rule Gate UI
+        document.getElementById('mysteryRuleTitle').textContent = 'MYSTERY RULE ???';
+        document.getElementById('mysteryClueText').textContent = 'Drag polygons here! If a shape obeys the secret rule, the portal accepts it.';
+        document.getElementById('mysteryProgressBadge').textContent = '🔮 Shapes Tested: 0 / 5 to Unlock Rule';
+
+        // Clear all docked badges
+        ['dock_A', 'dock_B', 'dock_both', 'dock_neither', 'dock_gate_pass', 'dock_gate_reject'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.innerHTML = '';
+        });
+
+        // Clear & pre-populate conveyor belt
+        document.getElementById('conveyorBelt').innerHTML = '';
+        this.conveyorItems = [];
+        for (let i = 0; i < 6; i++) {
+          this.spawnConveyorShape(110 + i * 165);
+        }
+
+        this.updateHud();
+
+        // Automatically switch to Mystery Gate view if Level 5 is selected
+        if (idx === 4 && this.mode === 'venn') {
+          this.setMode('mystery');
+        }
+      }
+
+      resetRound() {
+        this.setupLevel(this.levelIdx);
+        sfx.snap();
+      }
+
+      nextLevel() {
+        const next = (this.levelIdx + 1) % LEVELS.length;
+        document.getElementById('levelSelect').value = next.toString();
+        this.selectLevel(next);
+      }
+
+      toggleMarkings() {
+        this.showMarkings = !this.showMarkings;
+        const btn = document.getElementById('btnMarkings');
+        btn.innerHTML = `<span>📐</span> <span class="hidden xl:inline">Markings: ${this.showMarkings ? 'ON' : 'OFF'}</span>`;
+        // Re-render conveyor SVG icons
+        this.conveyorItems.forEach(item => {
+          const svgWrap = item.el.querySelector('.poly-svg-wrap');
+          if (svgWrap) svgWrap.innerHTML = renderPolygonSVG(item.polyDef, this.showMarkings, 62);
+        });
+        sfx.snap();
+      }
+
+      toggleMutantDiagonals() {
+        this.mutantLab.showDiagonals = !this.mutantLab.showDiagonals;
+        document.getElementById('btnMutantDiags').textContent = `Diagonals: ${this.mutantLab.showDiagonals ? 'ON' : 'OFF'}`;
+        this.mutantLab.updateAndRender();
+        sfx.snap();
+      }
+
+      toggleSound() {
+        sfx.enabled = !sfx.enabled;
+        document.getElementById('btnSound').textContent = sfx.enabled ? '🔊' : '🔇';
+      }
+
+      revealMysteryRule() {
+        const lvl = LEVELS[this.levelIdx];
+        this.mysteryRevealed = true;
+        document.getElementById('mysteryRuleTitle').textContent = `🔓 ${lvl.mysteryRuleLabel}`;
+        document.getElementById('mysteryClueText').textContent = lvl.mysteryClue;
+        sfx.correct();
+      }
+
+      /**
+       * ========================================================================
+       * CONVEYOR BELT SPAWNER & 20-POINT SIMULTANEOUS MULTI-TOUCH DRAG-AND-DROP
+       * ========================================================================
+       */
+      spawnConveyorShape(initialX = null) {
+        const belt = document.getElementById('conveyorBelt');
+        if (!belt) return;
+        const beltRect = belt.getBoundingClientRect();
+        const startX = initialX !== null ? initialX : Math.max(beltRect.width + 60, 960);
+
+        // Pick balanced random polygon type (avoiding immediate duplicate)
+        const keys = Object.keys(POLYGON_TYPES);
+        const recentKeys = this.conveyorItems.slice(-2).map(it => it.polyDef.key);
+        const candidates = keys.filter(k => !recentKeys.includes(k));
+        const pickKey = candidates[Math.floor(Math.random() * candidates.length)];
+        const polyDef = POLYGON_TYPES[pickKey];
+
+        const id = this.nextItemId++;
+        const card = document.createElement('div');
+        card.className = 'conveyor-item absolute top-1/2 -translate-y-1/2 w-[132px] h-[82px] rounded-2xl bg-slate-900/95 border-2 border-slate-600/90 hover:border-cyan-400 flex flex-col items-center justify-center px-2 py-1 shadow-lg cursor-grab active:cursor-grabbing';
+        card.style.left = `${startX}px`;
+        card.innerHTML = `
+          <div class="poly-svg-wrap flex items-center justify-center h-[52px]">
+            ${renderPolygonSVG(polyDef, this.showMarkings, 62)}
+          </div>
+          <span class="text-[11px] font-extrabold text-slate-100 truncate w-full text-center leading-tight">
+            ${polyDef.shortName}
+          </span>
+        `;
+
+        const itemObj = {
+          id,
+          polyDef,
+          x: startX,
+          el: card,
+          beingDragged: false
+        };
+
+        this.attachMultiTouchHandlers(itemObj);
+        belt.appendChild(card);
+        this.conveyorItems.push(itemObj);
+      }
+
+      attachMultiTouchHandlers(itemObj) {
+        const el = itemObj.el;
+
+        el.addEventListener('pointerdown', (e) => {
+          if (!this.roundActive) return;
+          e.stopPropagation();
+          el.setPointerCapture(e.pointerId);
+
+          itemObj.beingDragged = true;
+          el.style.opacity = '0.3';
+          sfx.grab();
+
+          // Create floating drag ghost in top-level dragLayer keyed by pointerId
+          const ghost = document.createElement('div');
+          ghost.className = 'drag-ghost w-[138px] h-[88px] rounded-2xl bg-slate-900/95 border-2 border-cyan-400 flex flex-col items-center justify-center px-2 py-1';
+          ghost.style.left = `${e.clientX}px`;
+          ghost.style.top = `${e.clientY}px`;
+          ghost.innerHTML = `
+            ${renderPolygonSVG(itemObj.polyDef, this.showMarkings, 66)}
+            <span class="text-xs font-extrabold text-white mt-0.5">${itemObj.polyDef.shortName}</span>
+          `;
+          document.getElementById('dragLayer').appendChild(ghost);
+
+          this.activeDrags.set(e.pointerId, {
+            itemObj,
+            ghostEl: ghost,
+            startX: e.clientX,
+            startY: e.clientY,
+            moved: false
+          });
+        });
+
+        el.addEventListener('pointermove', (e) => {
+          const drag = this.activeDrags.get(e.pointerId);
+          if (!drag) return;
+
+          const dist = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+          if (dist > 10) drag.moved = true;
+
+          drag.ghostEl.style.left = `${e.clientX}px`;
+          drag.ghostEl.style.top = `${e.clientY}px`;
+        });
+
+        const endDrag = (e) => {
+          const drag = this.activeDrags.get(e.pointerId);
+          if (!drag) return;
+
+          el.releasePointerCapture(e.pointerId);
+          drag.ghostEl.remove();
+          this.activeDrags.delete(e.pointerId);
+
+          // If tapped without dragging -> open Quick Property Inspector!
+          if (!drag.moved) {
+            itemObj.beingDragged = false;
+            el.style.opacity = '1';
+            this.openInspector(itemObj.polyDef);
+            return;
+          }
+
+          // Determine which zone the shape was dropped onto
+          const dropZone = this.detectDropZone(e.clientX, e.clientY);
+          if (!dropZone) {
+            // Dropped back onto conveyor / outside arena -> return smoothly
+            itemObj.beingDragged = false;
+            el.style.opacity = '1';
+            return;
+          }
+
+          this.evaluateDrop(itemObj.polyDef, dropZone, e.clientX, e.clientY, () => {
+            // On Valid Sort: remove item from conveyor and spawn replacement
+            el.remove();
+            this.conveyorItems = this.conveyorItems.filter(it => it.id !== itemObj.id);
+            this.spawnConveyorShape();
+          }, () => {
+            // On Invalid Sort: elastic bounce back to conveyor!
+            itemObj.beingDragged = false;
+            el.style.opacity = '1';
+          });
+        };
+
+        el.addEventListener('pointerup', endDrag);
+        el.addEventListener('pointercancel', endDrag);
+      }
+
+      detectDropZone(clientX, clientY) {
+        if (this.mode === 'venn') {
+          const vennRect = document.getElementById('vennView').getBoundingClientRect();
+          if (
+            clientX < vennRect.left || clientX > vennRect.right ||
+            clientY < vennRect.top || clientY > vennRect.bottom
+          ) {
+            return null;
+          }
+
+          const rectA = document.getElementById('circleA').getBoundingClientRect();
+          const rectB = document.getElementById('circleB').getBoundingClientRect();
+
+          const inCircle = (r) => {
+            const cx = r.left + r.width / 2;
+            const cy = r.top + r.height / 2;
+            const rx = r.width / 2;
+            const ry = r.height / 2;
+            const norm = Math.pow((clientX - cx) / rx, 2) + Math.pow((clientY - cy) / ry, 2);
+            return norm <= 1.02;
+          };
+
+          const inA = inCircle(rectA);
+          const inB = inCircle(rectB);
+
+          if (inA && inB) return 'both';
+          if (inA) return 'A';
+          if (inB) return 'B';
+          return 'neither';
+        }
+
+        if (this.mode === 'mystery') {
+          const passRect = document.getElementById('gatePassZone').getBoundingClientRect();
+          const rejRect = document.getElementById('gateRejectZone').getBoundingClientRect();
+
+          if (clientX >= passRect.left && clientX <= passRect.right && clientY >= passRect.top && clientY <= passRect.bottom) {
+            return 'gate_pass';
+          }
+          if (clientX >= rejRect.left && clientX <= rejRect.right && clientY >= rejRect.top && clientY <= rejRect.bottom) {
+            return 'gate_reject';
+          }
+        }
+
+        return null;
+      }
+
+      /**
+       * ========================================================================
+       * SEND MUTANT SHAPE DIRECTLY TO VENN / MYSTERY GATE
+       * ========================================================================
+       */
+      sendMutantToGate() {
+        if (this.mode === 'mutant') {
+          this.setMode('venn');
+        }
+        const mutantProps = this.mutantLab.analyzeProperties();
+        const lvl = LEVELS[this.levelIdx];
+
+        if (this.mode === 'venn') {
+          const satA = lvl.testA(mutantProps);
+          const satB = lvl.testB(mutantProps);
+          const correctZone = (satA && satB) ? 'both' : (satA ? 'A' : (satB ? 'B' : 'neither'));
+          const zoneNames = {
+            both: `BOTH (${lvl.labelA} & ${lvl.labelB})`,
+            A: `Zone A (${lvl.labelA})`,
+            B: `Zone B (${lvl.labelB})`,
+            neither: 'NEITHER (Outside Both Circles)'
+          };
+
+          this.evaluateDrop(mutantProps, correctZone, window.innerWidth * 0.6, window.innerHeight * 0.45, () => {
+            this.showFeedback(`🧬 Morphed "${mutantProps.name}" tested and docked in ${zoneNames[correctZone]}!`, 'success');
+          }, () => {});
+        } else {
+          const passes = lvl.testMystery(mutantProps);
+          const targetZone = passes ? 'gate_pass' : 'gate_reject';
+          this.evaluateDrop(mutantProps, targetZone, window.innerWidth * 0.6, window.innerHeight * 0.45, () => {
+            this.showFeedback(`🧬 Morphed "${mutantProps.name}" ${passes ? 'PASSED' : 'was REJECTED by'} the Mystery Gate!`, 'success');
+          }, () => {});
+        }
+      }
+
+      /**
+       * ========================================================================
+       * CORE CLASSIFICATION & BOUNCE-BACK ENGINE
+       * ========================================================================
+       */
+      evaluateDrop(polyDef, droppedZone, dropX, dropY, onSuccess, onReject) {
+        const lvl = LEVELS[this.levelIdx];
+        this.attemptCount += 1;
+
+        if (this.mode === 'venn') {
+          const satA = lvl.testA(polyDef);
+          const satB = lvl.testB(polyDef);
+          const expectedZone = (satA && satB) ? 'both' : (satA ? 'A' : (satB ? 'B' : 'neither'));
+
+          if (droppedZone === expectedZone) {
+            // Correct Classification!
+            sfx.correct();
+            this.streak += 1;
+            this.sortedCount += 1;
+            const pts = 100 + Math.min(50, this.streak * 10);
+            this.score += pts;
+            this.ropePos = Math.min(100, this.ropePos + 8);
+
+            this.dockShapeChip(`dock_${expectedZone}`, polyDef);
+            this.showFeedback(`✅ ${polyDef.name} belongs in ${expectedZone.toUpperCase()}! (+${pts} pts)`, 'success');
+            this.updateHud();
+            onSuccess();
+
+            if (this.ropePos >= 100) {
+              this.endRound('🎉 Tug-of-War Victory! Your class pulled the rope to 100%!');
+            }
+          } else {
+            // Bounced! Explain WHY geometrically
+            sfx.bounce();
+            this.streak = 0;
+            this.ropePos = Math.max(10, this.ropePos - 5);
+            this.triggerZoneShake(droppedZone);
+
+            const reason = this.buildVennRejectionReason(polyDef, droppedZone, satA, satB, lvl);
+            this.showFeedback(`🔄 Bounced! ${reason}`, 'error');
+            this.updateHud();
+            onReject();
+          }
+          return;
+        }
+
+        // Mystery Rule Gate Mode
+        if (this.mode === 'mystery') {
+          const passesRule = lvl.testMystery(polyDef);
+          const expectedZone = passesRule ? 'gate_pass' : 'gate_reject';
+
+          this.mysteryTestedCount += 1;
+          document.getElementById('mysteryProgressBadge').textContent =
+            this.mysteryRevealed
+              ? `🔓 Rule Unlocked!`
+              : `🔮 Shapes Tested: ${Math.min(5, this.mysteryTestedCount)} / 5 to Unlock Rule`;
+
+          if (this.mysteryTestedCount >= 5 && !this.mysteryRevealed) {
+            this.revealMysteryRule();
+          }
+
+          if (droppedZone === expectedZone) {
+            sfx.correct();
+            this.streak += 1;
+            this.sortedCount += 1;
+            this.score += 120;
+            this.ropePos = Math.min(100, this.ropePos + 9);
+
+            this.dockShapeChip(`dock_${expectedZone}`, polyDef);
+            this.showFeedback(
+              passesRule
+                ? `⚡ Portal Accepted ${polyDef.name}! It matches the secret property!`
+                : `🛡️ Correctly Rejected ${polyDef.name}! It breaks the secret rule.`,
+              'success'
+            );
+            this.updateHud();
+            onSuccess();
+
+            if (this.ropePos >= 100) {
+              this.endRound('🔮 Mystery Rule Solved & Tug-of-War Won!');
+            }
+          } else {
+            sfx.bounce();
+            this.streak = 0;
+            this.ropePos = Math.max(10, this.ropePos - 5);
+            this.triggerZoneShake(droppedZone);
+
+            const clueMsg = passesRule
+              ? `Wait—${polyDef.name} actually PASSES the Mystery Gate! Try dropping it into the left portal.`
+              : `Gate Repelled ${polyDef.name}! Clue: ${lvl.mysteryClue.replace('Clue: ', '')}`;
+            this.showFeedback(`🔄 Bounced! ${clueMsg}`, 'error');
+            this.updateHud();
+            onReject();
+          }
+        }
+      }
+
+      buildVennRejectionReason(polyDef, droppedZone, satA, satB, lvl) {
+        if (droppedZone === 'both' && satA && !satB) {
+          return `${polyDef.name} satisfies "${lvl.labelA}", but does NOT have "${lvl.labelB}"—try Zone A!`;
+        }
+        if (droppedZone === 'both' && !satA && satB) {
+          return `${polyDef.name} has "${lvl.labelB}", but does NOT satisfy "${lvl.labelA}"—try Zone B!`;
+        }
+        if (droppedZone === 'A' && satA && satB) {
+          return `${polyDef.name} satisfies BOTH "${lvl.labelA}" AND "${lvl.labelB}"—move it into the center BOTH overlap!`;
+        }
+        if (droppedZone === 'B' && satA && satB) {
+          return `${polyDef.name} satisfies BOTH "${lvl.labelB}" AND "${lvl.labelA}"—move it into the center BOTH overlap!`;
+        }
+        if (!satA && !satB) {
+          return `${polyDef.name} has neither "${lvl.labelA}" nor "${lvl.labelB}"—drop it outside in the NEITHER zone!`;
+        }
+        return `${polyDef.name} does not match that zone's property. Tap the shape to inspect its properties!`;
+      }
+
+      dockShapeChip(dockId, polyDef) {
+        const dock = document.getElementById(dockId);
+        if (!dock) return;
+
+        // Keep up to 8 compact visual example chips per zone
+        if (dock.children.length >= 8) {
+          dock.removeChild(dock.firstChild);
+        }
+
+        const chip = document.createElement('div');
+        chip.className = 'px-2 py-1 rounded-xl bg-slate-900/90 border border-emerald-400/60 flex items-center gap-1 shadow text-[10px] font-extrabold text-white';
+        chip.innerHTML = `
+          <span class="text-emerald-400">✓</span>
+          <span>${polyDef.shortName}</span>
+        `;
+        dock.appendChild(chip);
+      }
+
+      triggerZoneShake(zoneKey) {
+        const map = {
+          A: 'circleA',
+          B: 'circleB',
+          both: 'zoneBoth',
+          neither: 'vennView',
+          gate_pass: 'gatePassZone',
+          gate_reject: 'gateRejectZone'
+        };
+        const el = document.getElementById(map[zoneKey]);
+        if (!el) return;
+        el.classList.remove('zone-reject-anim');
+        void el.offsetWidth;
+        el.classList.add('zone-reject-anim');
+      }
+
+      showFeedback(msg, type = 'success') {
+        const toast = document.getElementById('feedbackToast');
+        toast.textContent = msg;
+        toast.className = type === 'success'
+          ? 'mt-2.5 px-4 py-2 rounded-2xl bg-emerald-950/95 border-2 border-emerald-400 shadow-2xl text-xs md:text-sm font-bold text-emerald-100 max-w-xl text-center'
+          : 'mt-2.5 px-4 py-2 rounded-2xl bg-rose-950/95 border-2 border-rose-400 shadow-2xl text-xs md:text-sm font-bold text-rose-100 max-w-xl text-center';
+        toast.classList.remove('hidden');
+
+        clearTimeout(this._fbTimer);
+        this._fbTimer = setTimeout(() => toast.classList.add('hidden'), 3600);
+      }
+
+      openInspector(polyDef) {
+        sfx.snap();
+        document.getElementById('inspSvgBox').innerHTML = renderPolygonSVG(polyDef, true, 44);
+        document.getElementById('inspTitle').textContent = polyDef.name;
+        document.getElementById('inspHierarchy').textContent = `Hierarchy: ${polyDef.hierarchy}`;
+        document.getElementById('inspPropsList').innerHTML = polyDef.bullets
+          .map(b => `<li class="flex items-start gap-2"><span class="text-cyan-400 font-bold">•</span><span>${b}</span></li>`)
+          .join('');
+        document.getElementById('inspectorModal').classList.remove('hidden');
+      }
+
+      closeInspector() {
+        document.getElementById('inspectorModal').classList.add('hidden');
+      }
+
+      /**
+       * ========================================================================
+       * TIMER, HUD UPDATES & ROUND COMPLETION CELEBRATION
+       * ========================================================================
+       */
+      updateHud() {
+        document.getElementById('scoreReadout').textContent = `Score: ${this.score}`;
+        document.getElementById('ropeLeftFill').style.width = `${this.ropePos}%`;
+        document.getElementById('ropeKnot').style.left = `${this.ropePos}%`;
+      }
+
+      startTimer() {
+        clearInterval(this.timerInterval);
+        this.timerInterval = setInterval(() => {
+          if (!this.roundActive) return;
+          this.timeLeft = Math.max(0, this.timeLeft - 1);
+          document.getElementById('timerReadout').textContent = `⏱️ ${this.timeLeft}s`;
+          if (this.timeLeft === 0) {
+            this.endRound('⏱️ Time Up! Great Classification Teamwork!');
+          }
+        }, 1000);
+      }
+
+      endRound(headline) {
+        this.roundActive = false;
+        sfx.win();
+        this.launchConfetti();
+
+        const lvl = LEVELS[this.levelIdx];
+        const accuracy = this.attemptCount > 0 ? Math.round((this.sortedCount / this.attemptCount) * 100) : 100;
+
+        document.getElementById('summaryTitle').textContent = headline;
+        document.getElementById('summarySubtitle').textContent = lvl.title;
+        document.getElementById('summaryTakeawayText').textContent = lvl.takeaway;
+        document.getElementById('summaryStatsGrid').innerHTML = `
+          <div class="p-3.5 rounded-2xl bg-slate-800/90 border border-amber-400/40">
+            <div class="text-[11px] font-extrabold uppercase text-amber-300">Final Score</div>
+            <div class="text-2xl md:text-3xl font-display font-bold text-white mt-1">⭐ ${this.score}</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-800/90 border border-cyan-400/40">
+            <div class="text-[11px] font-extrabold uppercase text-cyan-300">Shapes Sorted</div>
+            <div class="text-2xl md:text-3xl font-display font-bold text-white mt-1">${this.sortedCount}</div>
+          </div>
+          <div class="p-3.5 rounded-2xl bg-slate-800/90 border border-emerald-400/40">
+            <div class="text-[11px] font-extrabold uppercase text-emerald-300">Accuracy</div>
+            <div class="text-2xl md:text-3xl font-display font-bold text-emerald-300 mt-1">${accuracy}%</div>
+          </div>
+        `;
+
+        document.getElementById('summaryModal').classList.remove('hidden');
+      }
+
+      launchConfetti() {
+        const colors = ['#22d3ee', '#10b981', '#fbbf24', '#f43f5e', '#a855f7'];
+        this.confetti = Array.from({ length: 90 }, () => ({
+          x: Math.random() * window.innerWidth,
+          y: -20 - Math.random() * 200,
+          vx: (Math.random() - 0.5) * 5,
+          vy: 2.5 + Math.random() * 4.5,
+          size: 6 + Math.random() * 7,
+          rot: Math.random() * 360,
+          vRot: (Math.random() - 0.5) * 10,
+          color: colors[Math.floor(Math.random() * colors.length)]
+        }));
+      }
+
+      /**
+       * ========================================================================
+       * ANIMATION LOOP (Conveyor Belt Motion & Celebration Confetti)
+       * ========================================================================
+       */
+      loop(now) {
+        const dt = Math.min(0.1, (now - this.lastTime) / 1000);
+        this.lastTime = now;
+
+        // Move conveyor shapes smoothly from right to left
+        if (this.roundActive) {
+          const speed = 36; // px per second (comfortable for P5/P6 reading & grabbing)
+          for (let i = this.conveyorItems.length - 1; i >= 0; i--) {
+            const item = this.conveyorItems[i];
+            if (!item.beingDragged) {
+              item.x -= speed * dt;
+              item.el.style.left = `${item.x}px`;
+
+              // Recycle shapes that exit the far-left edge back to the right queue
+              if (item.x < -145) {
+                const maxRight = this.conveyorItems.reduce((m, it) => Math.max(m, it.x), 880);
+                item.x = maxRight + 155;
+                item.el.style.left = `${item.x}px`;
+              }
+            }
+          }
+        }
+
+        // Render confetti particles if active
+        const cCanvas = document.getElementById('confettiCanvas');
+        if (cCanvas) {
+          if (cCanvas.width !== window.innerWidth || cCanvas.height !== window.innerHeight) {
+            cCanvas.width = window.innerWidth;
+            cCanvas.height = window.innerHeight;
+          }
+          const ctx = cCanvas.getContext('2d');
+          ctx.clearRect(0, 0, cCanvas.width, cCanvas.height);
+
+          if (this.confetti.length > 0) {
+            this.confetti.forEach(p => {
+              p.x += p.vx;
+              p.y += p.vy;
+              p.rot += p.vRot;
+              ctx.save();
+              ctx.translate(p.x, p.y);
+              ctx.rotate((p.rot * Math.PI) / 180);
+              ctx.fillStyle = p.color;
+              ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+              ctx.restore();
+            });
+            this.confetti = this.confetti.filter(p => p.y < window.innerHeight + 30);
+          }
+        }
+
+        requestAnimationFrame((t) => this.loop(t));
+      }
+    }
+
+    // Boot Polygon Tug-of-War on Window Load
+    let app;
+    window.addEventListener('DOMContentLoaded', () => {
+      app = new PolygonTugOfWarApp();
+    });
+  </script>
+</body>
+</html>
